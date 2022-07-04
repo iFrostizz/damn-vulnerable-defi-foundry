@@ -5,12 +5,14 @@ import {ReentrancyGuard} from "openzeppelin-contracts/security/ReentrancyGuard.s
 import {Address} from "openzeppelin-contracts/utils/Address.sol";
 import {DamnValuableToken} from "../DamnValuableToken.sol";
 
+import "forge-std/Test.sol";
+
 /**
  * @title FlashLoanerPool
  * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
  * @dev A simple pool to get flash loans of DVT
  */
-contract FlashLoanerPool is ReentrancyGuard {
+contract FlashLoanerPool is ReentrancyGuard, Test {
     using Address for address;
 
     DamnValuableToken public immutable liquidityToken;
@@ -33,6 +35,9 @@ contract FlashLoanerPool is ReentrancyGuard {
         msg.sender.functionCall(
             abi.encodeWithSignature("receiveFlashLoan(uint256)", amount)
         );
+
+	/*emit log_named_uint("balanceOf", liquidityToken.balanceOf(address(this)));
+	emit log_named_uint("balBe", balanceBefore);*/
 
         if (liquidityToken.balanceOf(address(this)) < balanceBefore)
             revert FlashLoanHasNotBeenPaidBack();
